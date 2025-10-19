@@ -1,475 +1,161 @@
--- uilib.lua
--- Simples UI Library para Roblox (ModuleScript)
--- Uso: local uilibrary = require(script.uilib); uilibrary:createwindow("Titulo","K"); ...
+--[[ 
+Script: Visionário UI (exemplo básico)
+Cria um ScreenGui com abas, botões e toggles direto no jogo
+]]
 
-local uilibrary = {}
-uilibrary.__index = uilibrary
+-- Remove antigo (se existir)
+if game.Players.LocalPlayer.PlayerGui:FindFirstChild("VisionarioUI") then
+	game.Players.LocalPlayer.PlayerGui:FindFirstChild("VisionarioUI"):Destroy()
+end
 
--- armazenamento interno de estados por id
-local states = {} -- states[id] = { type = "toggle"/"slider", value = ... }
+-- Criar GUI principal
+local gui = Instance.new("ScreenGui")
+gui.Name = "VisionarioUI"
+gui.ResetOnSpawn = false
+gui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
 
--- referencias visuais
-local ScreenGui = nil
-local MainWindow = nil
-local TabsHolder = nil
-local ContentHolder = nil
-local TabFrames = {} -- nome -> Frame
-local TabButtons = {} -- nome -> TextButton
+-- Janela principal
+local main = Instance.new("Frame")
+main.Size = UDim2.new(0, 550, 0, 350)
+main.Position = UDim2.new(0.5, -275, 0.4, -175)
+main.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+main.BorderSizePixel = 0
+main.Parent = gui
+
+local corner = Instance.new("UICorner", main)
+corner.CornerRadius = UDim.new(0, 12)
+
+-- Título
+local title = Instance.new("TextLabel")
+title.Parent = main
+title.Size = UDim2.new(1, 0, 0, 40)
+title.BackgroundTransparency = 1
+title.Text = "Visionário Hub"
+title.TextColor3 = Color3.fromRGB(255,255,255)
+title.Font = Enum.Font.GothamBold
+title.TextSize = 22
+
+-- Botão fechar
+local close = Instance.new("TextButton")
+close.Parent = main
+close.Size = UDim2.new(0, 30, 0, 30)
+close.Position = UDim2.new(1, -40, 0, 5)
+close.Text = "X"
+close.Font = Enum.Font.GothamBold
+close.TextSize = 18
+close.TextColor3 = Color3.new(1,1,1)
+close.BackgroundColor3 = Color3.fromRGB(180,50,50)
+Instance.new("UICorner", close).CornerRadius = UDim.new(0,6)
+close.MouseButton1Click:Connect(function()
+	main.Visible = false
+end)
+
+-- Área de abas
+local tabHolder = Instance.new("Frame")
+tabHolder.Parent = main
+tabHolder.Size = UDim2.new(0, 120, 1, -50)
+tabHolder.Position = UDim2.new(0, 10, 0, 50)
+tabHolder.BackgroundTransparency = 1
+
+local list = Instance.new("UIListLayout", tabHolder)
+list.Padding = UDim.new(0, 6)
+list.SortOrder = Enum.SortOrder.LayoutOrder
+
+-- Área de conteúdo
+local content = Instance.new("Frame")
+content.Parent = main
+content.Size = UDim2.new(1, -150, 1, -60)
+content.Position = UDim2.new(0, 140, 0, 50)
+content.BackgroundColor3 = Color3.fromRGB(25,25,25)
+content.BorderSizePixel = 0
+Instance.new("UICorner", content).CornerRadius = UDim.new(0, 10)
+
+-- Criar abas
+local tabs = {}
 local activeTab = nil
 
--- util: cria instância com propriedades
-local function newInst(class, props)
-	local inst = Instance.new(class)
-	if props then
-		for k, v in pairs(props) do
-			if k == "Parent" then
-				inst.Parent = v
-			else
-				inst[k] = v
-			end
+local function createTab(name)
+	local button = Instance.new("TextButton")
+	button.Parent = tabHolder
+	button.Size = UDim2.new(1, 0, 0, 40)
+	button.BackgroundColor3 = Color3.fromRGB(35,35,35)
+	button.TextColor3 = Color3.fromRGB(255,255,255)
+	button.Font = Enum.Font.GothamBold
+	button.TextSize = 16
+	button.Text = name
+	Instance.new("UICorner", button).CornerRadius = UDim.new(0,8)
+
+	local frame = Instance.new("Frame")
+	frame.Parent = content
+	frame.Size = UDim2.new(1, -10, 1, -10)
+	frame.Position = UDim2.new(0, 5, 0, 5)
+	frame.BackgroundTransparency = 1
+	frame.Visible = false
+
+	button.MouseButton1Click:Connect(function()
+		for _, tab in pairs(tabs) do
+			tab.frame.Visible = false
 		end
-	end
-	return inst
-end
-
--- Notificação simples (tenta usar SetCore; se não disponível cria um popup temporário)
-function uilibrary:sendnotify(titleOrText, descOrTime, timeOrNil)
-	-- suporte a 2 ou 3 args: (text), (text, duration), (title, text, duration)
-	local title, text, duration = nil, nil, nil
-	if timeOrNil ~= nil then
-		title = tostring(titleOrText or "")
-		text = tostring(descOrTime or "")
-		duration = tonumber(timeOrNil) or 2
-	else
-		if type(descOrTime) == "number" then
-			title = "Notice"
-			text = tostring(titleOrText or "")
-			duration = tonumber(descOrTime)
-		else
-			title = "Notice"
-			text = tostring(titleOrText or "")
-			duration = tonumber(descOrTime) or 2
-		end
-	end
-
-	local success, err = pcall(function()
-		game:GetService("StarterGui"):SetCore("SendNotification", {
-			Title = title;
-			Text = text;
-			Duration = duration;
-		})
-	end)
-	if not success then
-		-- fallback: cria um pequeno frame no canto
-		if not ScreenGui then return end
-		local notif = newInst("Frame", {
-			Parent = ScreenGui;
-			Size = UDim2.new(0, 300, 0, 70);
-			AnchorPoint = Vector2.new(0.5, 0);
-			Position = UDim2.new(0.5, 0, 0.1, 0);
-			BackgroundColor3 = Color3.fromRGB(30,30,30);
-			BorderSizePixel = 0;
-		})
-		local corner = newInst("UICorner", {Parent = notif, CornerRadius = UDim.new(0,8)})
-		local t = newInst("TextLabel", {
-			Parent = notif;
-			Size = UDim2.new(1, -16, 0.4, -8);
-			Position = UDim2.new(0, 8, 0, 6);
-			Text = title;
-			TextColor3 = Color3.fromRGB(255,255,255);
-			Font = Enum.Font.GothamBold;
-			TextSize = 18;
-			BackgroundTransparency = 1;
-		})
-		local d = newInst("TextLabel", {
-			Parent = notif;
-			Size = UDim2.new(1, -16, 0.6, -8);
-			Position = UDim2.new(0, 8, 0.4, 2);
-			Text = text;
-			TextColor3 = Color3.fromRGB(200,200,200);
-			Font = Enum.Font.Gotham;
-			TextWrapped = true;
-			TextSize = 14;
-			BackgroundTransparency = 1;
-		})
-		coroutine.wrap(function()
-			wait(duration or 2)
-			pcall(function() notif:Destroy() end)
-		end)()
-	end
-end
-
--- retorna valor guardado pelo id (toggle/slider)
-function uilibrary:returnid(id)
-	return states[id] and states[id].value or false
-end
-
--- cria janela principal (título, key para abrir/fechar opcional)
-function uilibrary:createwindow(title, keybind)
-	-- se já existe, apenas retorna
-	if ScreenGui then return end
-
-	ScreenGui = Instance.new("ScreenGui")
-	ScreenGui.Name = "uilego_" .. tostring(math.random(1000,9999))
-	ScreenGui.Parent = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
-	ScreenGui.ResetOnSpawn = false
-
-	-- container principal
-	MainWindow = newInst("Frame", {
-		Parent = ScreenGui;
-		Size = UDim2.new(0, 550, 0, 380);
-		Position = UDim2.new(0.5, -275, 0.2, 0);
-		BackgroundColor3 = Color3.fromRGB(22,22,25);
-		BorderSizePixel = 0;
-	})
-	newInst("UICorner", {Parent = MainWindow, CornerRadius = UDim.new(0,14)})
-	newInst("UIStroke", {Parent = MainWindow, Color = Color3.fromRGB(60,60,70), Thickness = 1})
-
-	-- titulo
-	local titleLabel = newInst("TextLabel", {
-		Parent = MainWindow;
-		Size = UDim2.new(1, -24, 0, 48);
-		Position = UDim2.new(0, 12, 0, 8);
-		Text = tostring(title or "Menu");
-		TextColor3 = Color3.fromRGB(240,240,240);
-		Font = Enum.Font.GothamBold;
-		TextSize = 20;
-		BackgroundTransparency = 1;
-		TextXAlignment = Enum.TextXAlignment.Left;
-	})
-	-- fechar / minimizar
-	local closeBtn = newInst("TextButton", {
-		Parent = MainWindow;
-		Size = UDim2.new(0, 28, 0, 28);
-		Position = UDim2.new(1, -36, 0, 10);
-		Text = "X";
-		Font = Enum.Font.GothamBold;
-		TextSize = 16;
-		TextColor3 = Color3.fromRGB(255,255,255);
-		BackgroundColor3 = Color3.fromRGB(180,50,50);
-		AutoButtonColor = true;
-	})
-	newInst("UICorner", {Parent = closeBtn, CornerRadius = UDim.new(0,6)})
-	closeBtn.MouseButton1Click:Connect(function() MainWindow.Visible = false end)
-
-	local minimizeBtn = newInst("TextButton", {
-		Parent = MainWindow;
-		Size = UDim2.new(0, 28, 0, 28);
-		Position = UDim2.new(1, -72, 0, 10);
-		Text = "-";
-		Font = Enum.Font.GothamBold;
-		TextSize = 18;
-		TextColor3 = Color3.fromRGB(255,255,255);
-		BackgroundColor3 = Color3.fromRGB(100,100,100);
-	})
-	newInst("UICorner", {Parent = minimizeBtn, CornerRadius = UDim.new(0,6)})
-	local originalSize = MainWindow.Size
-	minimizeBtn.MouseButton1Click:Connect(function()
-		if MainWindow.Size == originalSize then
-			MainWindow.Size = UDim2.new(0, 150, 0, 50)
-		else
-			MainWindow.Size = originalSize
-		end
-	end)
-
-	-- tabs lateral
-	TabsHolder = newInst("Frame", {
-		Parent = MainWindow;
-		Size = UDim2.new(0, 120, 1, -72);
-		Position = UDim2.new(0, 12, 0, 64);
-		BackgroundTransparency = 1;
-	})
-	newInst("UICorner", {Parent = TabsHolder, CornerRadius = UDim.new(0,8)})
-
-	-- content area
-	ContentHolder = newInst("Frame", {
-		Parent = MainWindow;
-		Size = UDim2.new(1, -156, 1, -72);
-		Position = UDim2.new(0, 140, 0, 64);
-		BackgroundColor3 = Color3.fromRGB(18,18,20);
-		BorderSizePixel = 0;
-	})
-	newInst("UICorner", {Parent = ContentHolder, CornerRadius = UDim.new(0,10)})
-	newInst("UIListLayout", {Parent = TabsHolder, SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0,6)})
-
-	-- permite arrastar
-	local dragging, dragInput, dragStart, startPos
-	MainWindow.InputBegan:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.MouseButton1 then
-			dragging = true
-			dragStart = input.Position
-			startPos = MainWindow.Position
-			input.Changed:Connect(function()
-				if input.UserInputState == Enum.UserInputState.End then
-					dragging = false
-				end
-			end)
-		end
-	end)
-	MainWindow.InputChanged:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.MouseMovement then
-			dragInput = input
-		end
-	end)
-	game:GetService("UserInputService").InputChanged:Connect(function(input)
-		if input == dragInput and dragging then
-			local delta = input.Position - dragStart
-			MainWindow.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-		end
-	end)
-
-	-- tecla para abrir/fechar (opcional)
-	if keybind and typeof(keybind) == "string" then
-		local ks = string.upper(keybind)
-		game:GetService("UserInputService").InputBegan:Connect(function(inp, gpe)
-			if gpe then return end
-			if inp.KeyCode == Enum.KeyCode[ks] then
-				MainWindow.Visible = not MainWindow.Visible
-			end
-		end)
-	end
-
-	return MainWindow
-end
-
--- cria uma tab (nome)
-function uilibrary:createtab(name)
-	if not ScreenGui or not MainWindow then
-		warn("uilibrary: createwindow must be called before createtab")
-		return
-	end
-	if TabFrames[name] then return end
-
-	-- botão tab
-	local btn = newInst("TextButton", {
-		Parent = TabsHolder;
-		Size = UDim2.new(1, 0, 0, 40);
-		Text = tostring(name);
-		Font = Enum.Font.GothamBold;
-		TextSize = 16;
-		TextColor3 = Color3.fromRGB(230,230,230);
-		BackgroundColor3 = Color3.fromRGB(36,36,40);
-		BorderSizePixel = 0;
-		AutoButtonColor = true;
-	})
-	newInst("UICorner", {Parent = btn, CornerRadius = UDim.new(0,8)})
-
-	-- frame de conteúdo
-	local frame = newInst("ScrollingFrame", {
-		Parent = ContentHolder;
-		Size = UDim2.new(1, -24, 1, -24);
-		Position = UDim2.new(0, 12, 0, 12);
-		BackgroundTransparency = 1;
-		CanvasSize = UDim2.new(0,0,0,0);
-		ScrollBarThickness = 6;
-		Visible = false;
-	})
-	local list = newInst("UIListLayout", {Parent = frame, SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0,8)})
-	newInst("UIPadding", {Parent = frame, PaddingTop = UDim.new(0,6), PaddingLeft = UDim.new(0,6)})
-
-	-- comportamento do botão
-	btn.MouseButton1Click:Connect(function()
-		-- esconder outras
-		for n, f in pairs(TabFrames) do
-			if f then f.Visible = false end
-		end
-		-- mostrar essa
 		frame.Visible = true
-		activeTab = name
+		activeTab = frame
 	end)
 
-	-- se for a primeira tab criada, ativa automaticamente
-	if not next(TabFrames) then
+	tabs[#tabs+1] = {button = button, frame = frame}
+	if #tabs == 1 then
 		frame.Visible = true
-		activeTab = name
 	end
-
-	TabFrames[name] = frame
-	TabButtons[name] = btn
 	return frame
 end
 
--- helper: encontra frame da tab (por nome)
-local function getTabFrame(tabName)
-	if TabFrames[tabName] then return TabFrames[tabName] end
-	-- tenta usar a aba ativa se nome nulo
-	if not tabName and activeTab then return TabFrames[activeTab] end
-	warn("uilibrary: Tab '" .. tostring(tabName) .. "' não existe")
-	return nil
+-- Criar botão
+local function createButton(tab, text, callback)
+	local btn = Instance.new("TextButton")
+	btn.Parent = tab
+	btn.Size = UDim2.new(1, -20, 0, 40)
+	btn.Position = UDim2.new(0, 10, 0, 0)
+	btn.BackgroundColor3 = Color3.fromRGB(60,60,70)
+	btn.Text = text
+	btn.Font = Enum.Font.GothamBold
+	btn.TextSize = 16
+	btn.TextColor3 = Color3.fromRGB(255,255,255)
+	btn.BorderSizePixel = 0
+	Instance.new("UICorner", btn).CornerRadius = UDim.new(0,8)
+	btn.MouseButton1Click:Connect(callback)
 end
 
--- cria botão simples dentro da tab
-function uilibrary:createbutton(text, tabName, callback)
-	local frame = getTabFrame(tabName)
-	if not frame then return end
+-- Criar toggle
+local function createToggle(tab, text)
+	local frame = Instance.new("Frame")
+	frame.Parent = tab
+	frame.Size = UDim2.new(1, -20, 0, 35)
+	frame.Position = UDim2.new(0, 10, 0, 0)
+	frame.BackgroundTransparency = 1
 
-	local btn = newInst("TextButton", {
-		Parent = frame;
-		Size = UDim2.new(1, -12, 0, 40);
-		BackgroundColor3 = Color3.fromRGB(60,60,70);
-		Text = tostring(text or "Button");
-		Font = Enum.Font.GothamBold;
-		TextSize = 16;
-		TextColor3 = Color3.fromRGB(255,255,255);
-		BorderSizePixel = 0;
-		AutoButtonColor = true;
-	})
-	newInst("UICorner", {Parent = btn, CornerRadius = UDim.new(0,8)})
-	btn.MouseButton1Click:Connect(function()
-		pcall(function() callback() end)
-	end)
-	-- ajustar canvas
-	frame.CanvasSize = UDim2.new(0,0,0, frame.UIListLayout.AbsoluteContentSize + 16)
-	return btn
-end
+	local label = Instance.new("TextLabel")
+	label.Parent = frame
+	label.Text = text
+	label.Font = Enum.Font.Gotham
+	label.TextSize = 16
+	label.TextColor3 = Color3.fromRGB(255,255,255)
+	label.Size = UDim2.new(0.7, 0, 1, 0)
+	label.BackgroundTransparency = 1
+	label.TextXAlignment = Enum.TextXAlignment.Left
 
--- cria toggle (label, tabName, id, callback)
-function uilibrary:createtoggle(text, tabName, id, callback)
-	local frame = getTabFrame(tabName)
-	if not frame then return end
+	local toggleBtn = Instance.new("TextButton")
+	toggleBtn.Parent = frame
+	toggleBtn.Size = UDim2.new(0.25, 0, 0.8, 0)
+	toggleBtn.Position = UDim2.new(0.75, 0, 0.1, 0)
+	toggleBtn.Text = "OFF"
+	toggleBtn.Font = Enum.Font.GothamBold
+	toggleBtn.TextSize = 14
+	toggleBtn.BackgroundColor3 = Color3.fromRGB(120,120,120)
+	toggleBtn.TextColor3 = Color3.fromRGB(255,255,255)
+	Instance.new("UICorner", toggleBtn).CornerRadius = UDim.new(0,6)
 
-	-- default state
-	if not states[id] then states[id] = { type = "toggle", value = false } end
-
-	local container = newInst("Frame", {
-		Parent = frame;
-		Size = UDim2.new(1, -12, 0, 36);
-		BackgroundTransparency = 1;
-	})
-	local label = newInst("TextLabel", {
-		Parent = container;
-		Size = UDim2.new(0.8, 0, 1, 0);
-		Position = UDim2.new(0, 6, 0, 0);
-		Text = tostring(text or "Toggle");
-		Font = Enum.Font.Gotham;
-		TextSize = 16;
-		TextColor3 = Color3.fromRGB(230,230,230);
-		BackgroundTransparency = 1;
-		TextXAlignment = Enum.TextXAlignment.Left;
-	})
-	local toggleBtn = newInst("TextButton", {
-		Parent = container;
-		Size = UDim2.new(0.18, -8, 0.8, 0);
-		Position = UDim2.new(0.82, 0, 0.1, 0);
-		Text = states[id].value and "ON" or "OFF";
-		Font = Enum.Font.GothamBold;
-		TextSize = 14;
-		TextColor3 = Color3.fromRGB(255,255,255);
-		BackgroundColor3 = states[id].value and Color3.fromRGB(50,180,80) or Color3.fromRGB(120,120,120);
-		BorderSizePixel = 0;
-	})
-	newInst("UICorner", {Parent = toggleBtn, CornerRadius = UDim.new(0,8)})
-
+	local enabled = false
 	toggleBtn.MouseButton1Click:Connect(function()
-		states[id].value = not states[id].value
-		toggleBtn.Text = states[id].value and "ON" or "OFF"
-		toggleBtn.BackgroundColor3 = states[id].value and Color3.fromRGB(50,180,80) or Color3.fromRGB(120,120,120)
-		pcall(function() callback() end)
+		enabled = not enabled
+		toggleBtn.Text = enabled and "ON" or "OFF"
+		toggleBtn.BackgroundColor3 = enabled and Color3.fromRGB(50,200,100) or Color3.fromRGB(120,120,120)
 	end)
-
-	-- ajustar canvas
-	frame.CanvasSize = UDim2.new(0,0,0, frame.UIListLayout.AbsoluteContentSize + 16)
-	return container
 end
-
--- cria slider simples (label, tabName, max, id, callback)
-function uilibrary:createslider(text, tabName, maxValue, id, callback)
-	local frame = getTabFrame(tabName)
-	if not frame then return end
-	maxValue = tonumber(maxValue) or 100
-
-	if not states[id] then states[id] = { type = "slider", value = 1, max = maxValue } end
-	states[id].max = maxValue
-
-	local container = newInst("Frame", {
-		Parent = frame;
-		Size = UDim2.new(1, -12, 0, 44);
-		BackgroundTransparency = 1;
-	})
-	local label = newInst("TextLabel", {
-		Parent = container;
-		Size = UDim2.new(0.6, 0, 0.5, 0);
-		Position = UDim2.new(0, 6, 0, 2);
-		Text = tostring(text or "Slider");
-		Font = Enum.Font.Gotham;
-		TextSize = 15;
-		TextColor3 = Color3.fromRGB(230,230,230);
-		BackgroundTransparency = 1;
-		TextXAlignment = Enum.TextXAlignment.Left;
-	})
-
-	local valLabel = newInst("TextLabel", {
-		Parent = container;
-		Size = UDim2.new(0.4, -12, 0.5, 0);
-		Position = UDim2.new(0.6, 0, 0, 2);
-		Text = tostring(states[id].value);
-		Font = Enum.Font.GothamBold;
-		TextSize = 15;
-		TextColor3 = Color3.fromRGB(240,240,240);
-		BackgroundTransparency = 1;
-		TextXAlignment = Enum.TextXAlignment.Right;
-	})
-
-	-- minus, plus
-	local minus = newInst("TextButton", {
-		Parent = container;
-		Size = UDim2.new(0, 36, 0, 28);
-		Position = UDim2.new(0.6, 6, 0.5, 6);
-		Text = "-";
-		Font = Enum.Font.GothamBold;
-		TextSize = 18;
-		BackgroundColor3 = Color3.fromRGB(80,80,90);
-		TextColor3 = Color3.fromRGB(255,255,255);
-		BorderSizePixel = 0;
-	})
-	newInst("UICorner", {Parent = minus, CornerRadius = UDim.new(0,6)})
-
-	local plus = newInst("TextButton", {
-		Parent = container;
-		Size = UDim2.new(0, 36, 0, 28);
-		Position = UDim2.new(1, -42, 0.5, 6);
-		AnchorPoint = Vector2.new(1,0);
-		Text = "+";
-		Font = Enum.Font.GothamBold;
-		TextSize = 18;
-		BackgroundColor3 = Color3.fromRGB(80,80,90);
-		TextColor3 = Color3.fromRGB(255,255,255);
-		BorderSizePixel = 0;
-	})
-	newInst("UICorner", {Parent = plus, CornerRadius = UDim.new(0,6)})
-
-	-- comportamento
-	local function updateDisplay()
-		valLabel.Text = tostring(states[id].value)
-		pcall(function() callback() end)
-	end
-
-	minus.MouseButton1Click:Connect(function()
-		local cur = states[id].value
-		cur = math.max(1, cur - 1)
-		states[id].value = cur
-		updateDisplay()
-	end)
-	plus.MouseButton1Click:Connect(function()
-		local cur = states[id].value
-		cur = math.min(states[id].max or maxValue, cur + 1)
-		states[id].value = cur
-		updateDisplay()
-	end)
-
-	-- clique no label para setar manualmente via prompt
-	valLabel.MouseButton1Click = nil
-	local clickFrame = newInst("TextButton", {
-		Parent = container;
-		Size = UDim2.new(0, 0, 0, 0);
-		BackgroundTransparency = 1;
-		Text = "";
-	})
-	-- ajustar canvas
-	frame.CanvasSize = UDim2.new(0,0,0, frame.UIListLayout.AbsoluteContentSize + 16)
-
-	return container
-end
-
--- expose library
-return uilibrary
