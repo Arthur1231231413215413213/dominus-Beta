@@ -1,85 +1,110 @@
---// Visionário UI Library
--- Cria um ScreenGui na tela com estilo Rayfield, sem tabs.
+--// Visionário Hub - UI Base
+-- Cria automaticamente o ScreenGui igual um UI Loader (Rayfield Style)
+-- Você pode chamar via: loadstring(game:HttpGet("URL_DO_GITHUB"))()
 
 local Visionario = {}
 
-function Visionario:CreateUI(title)
+function Visionario:CreateWindow(title)
+    -- Remover antiga se existir
+    if game.CoreGui:FindFirstChild("VisionarioUI") then
+        game.CoreGui:FindFirstChild("VisionarioUI"):Destroy()
+    end
+
     -- Criar ScreenGui
     local gui = Instance.new("ScreenGui")
     gui.Name = "VisionarioUI"
     gui.ResetOnSpawn = false
     gui.Parent = game.CoreGui
 
-    -- Criar frame principal
+    -- Criar Frame principal
     local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(0, 380, 0, 250)
+    frame.Size = UDim2.new(0, 400, 0, 250)
     frame.Position = UDim2.new(0.35, 0, 0.3, 0)
-    frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+    frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
     frame.BorderSizePixel = 0
     frame.Active = true
     frame.Draggable = true
     frame.Parent = gui
 
-    -- Canto arredondado
+    -- Arredondar bordas
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, 10)
     corner.Parent = frame
 
     -- Título
     local titleLabel = Instance.new("TextLabel")
-    titleLabel.Size = UDim2.new(1, 0, 0, 35)
-    titleLabel.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-    titleLabel.BorderSizePixel = 0
-    titleLabel.Text = title or "Visionário Hub"
-    titleLabel.Font = Enum.Font.GothamBold
-    titleLabel.TextSize = 16
-    titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
     titleLabel.Parent = frame
+    titleLabel.Size = UDim2.new(1, 0, 0, 40)
+    titleLabel.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+    titleLabel.Text = title or "Visionário Hub"
+    titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    titleLabel.Font = Enum.Font.GothamBold
+    titleLabel.TextSize = 18
+    titleLabel.BorderSizePixel = 0
 
-    local corner2 = Instance.new("UICorner")
-    corner2.CornerRadius = UDim.new(0, 10)
-    corner2.Parent = titleLabel
+    local titleCorner = Instance.new("UICorner", titleLabel)
+    titleCorner.CornerRadius = UDim.new(0, 10)
 
-    -- Botão de fechar
-    local close = Instance.new("TextButton")
-    close.Size = UDim2.new(0, 40, 0, 25)
-    close.Position = UDim2.new(0.87, 0, 0.05, 0)
-    close.BackgroundColor3 = Color3.fromRGB(180, 0, 0)
-    close.Text = "X"
-    close.TextColor3 = Color3.fromRGB(255, 255, 255)
-    close.Font = Enum.Font.GothamBold
-    close.TextSize = 14
-    close.Parent = frame
+    -- Botão de Fechar
+    local closeBtn = Instance.new("TextButton")
+    closeBtn.Parent = frame
+    closeBtn.Size = UDim2.new(0, 35, 0, 25)
+    closeBtn.Position = UDim2.new(0.89, 0, 0.06, 0)
+    closeBtn.BackgroundColor3 = Color3.fromRGB(170, 40, 40)
+    closeBtn.Text = "X"
+    closeBtn.Font = Enum.Font.GothamBold
+    closeBtn.TextSize = 14
+    closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 5)
 
-    local corner3 = Instance.new("UICorner")
-    corner3.CornerRadius = UDim.new(0, 5)
-    corner3.Parent = close
-
-    close.MouseButton1Click:Connect(function()
+    closeBtn.MouseButton1Click:Connect(function()
         gui:Destroy()
     end)
 
-    -- Retornar UI para criação de botões
-    local content = Instance.new("Frame")
-    content.Size = UDim2.new(1, 0, 1, -40)
-    content.Position = UDim2.new(0, 0, 0, 40)
-    content.BackgroundTransparency = 1
-    content.Parent = frame
+    -- Botão de Minimizar
+    local minimizeBtn = Instance.new("TextButton")
+    minimizeBtn.Parent = frame
+    minimizeBtn.Size = UDim2.new(0, 35, 0, 25)
+    minimizeBtn.Position = UDim2.new(0.79, 0, 0.06, 0)
+    minimizeBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    minimizeBtn.Text = "_"
+    minimizeBtn.Font = Enum.Font.GothamBold
+    minimizeBtn.TextSize = 14
+    minimizeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Instance.new("UICorner", minimizeBtn).CornerRadius = UDim.new(0, 5)
 
+    local minimized = false
+    minimizeBtn.MouseButton1Click:Connect(function()
+        minimized = not minimized
+        for _, obj in pairs(frame:GetChildren()) do
+            if obj ~= titleLabel and obj ~= minimizeBtn and obj ~= closeBtn and not obj:IsA("UICorner") then
+                obj.Visible = not minimized
+            end
+        end
+        frame.Size = minimized and UDim2.new(0, 400, 0, 40) or UDim2.new(0, 400, 0, 250)
+    end)
+
+    -- Área de conteúdo
+    local content = Instance.new("Frame")
+    content.Parent = frame
+    content.BackgroundTransparency = 1
+    content.Size = UDim2.new(1, 0, 1, -50)
+    content.Position = UDim2.new(0, 0, 0, 45)
+
+    -- Sistema pra criar botões
+    local yPos = 0
     function Visionario:CreateButton(text, callback)
         local btn = Instance.new("TextButton")
-        btn.Size = UDim2.new(0.8, 0, 0, 30)
-        btn.Position = UDim2.new(0.1, 0, #content:GetChildren() * 0.12, 0)
-        btn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-        btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-        btn.Font = Enum.Font.Gotham
-        btn.TextSize = 14
-        btn.Text = text
         btn.Parent = content
-
-        local c = Instance.new("UICorner")
-        c.CornerRadius = UDim.new(0, 5)
-        c.Parent = btn
+        btn.Size = UDim2.new(0.8, 0, 0, 35)
+        btn.Position = UDim2.new(0.1, 0, 0, yPos)
+        btn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+        btn.Text = text
+        btn.Font = Enum.Font.Gotham
+        btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        btn.TextSize = 14
+        Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
+        yPos = yPos + 0.18
 
         btn.MouseButton1Click:Connect(function()
             if callback then
