@@ -1,161 +1,94 @@
---[[ 
-Script: Visionário UI (exemplo básico)
-Cria um ScreenGui com abas, botões e toggles direto no jogo
-]]
+--// Visionário UI Library
+-- Cria um ScreenGui na tela com estilo Rayfield, sem tabs.
 
--- Remove antigo (se existir)
-if game.Players.LocalPlayer.PlayerGui:FindFirstChild("VisionarioUI") then
-	game.Players.LocalPlayer.PlayerGui:FindFirstChild("VisionarioUI"):Destroy()
+local Visionario = {}
+
+function Visionario:CreateUI(title)
+    -- Criar ScreenGui
+    local gui = Instance.new("ScreenGui")
+    gui.Name = "VisionarioUI"
+    gui.ResetOnSpawn = false
+    gui.Parent = game.CoreGui
+
+    -- Criar frame principal
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(0, 380, 0, 250)
+    frame.Position = UDim2.new(0.35, 0, 0.3, 0)
+    frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+    frame.BorderSizePixel = 0
+    frame.Active = true
+    frame.Draggable = true
+    frame.Parent = gui
+
+    -- Canto arredondado
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 10)
+    corner.Parent = frame
+
+    -- Título
+    local titleLabel = Instance.new("TextLabel")
+    titleLabel.Size = UDim2.new(1, 0, 0, 35)
+    titleLabel.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+    titleLabel.BorderSizePixel = 0
+    titleLabel.Text = title or "Visionário Hub"
+    titleLabel.Font = Enum.Font.GothamBold
+    titleLabel.TextSize = 16
+    titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    titleLabel.Parent = frame
+
+    local corner2 = Instance.new("UICorner")
+    corner2.CornerRadius = UDim.new(0, 10)
+    corner2.Parent = titleLabel
+
+    -- Botão de fechar
+    local close = Instance.new("TextButton")
+    close.Size = UDim2.new(0, 40, 0, 25)
+    close.Position = UDim2.new(0.87, 0, 0.05, 0)
+    close.BackgroundColor3 = Color3.fromRGB(180, 0, 0)
+    close.Text = "X"
+    close.TextColor3 = Color3.fromRGB(255, 255, 255)
+    close.Font = Enum.Font.GothamBold
+    close.TextSize = 14
+    close.Parent = frame
+
+    local corner3 = Instance.new("UICorner")
+    corner3.CornerRadius = UDim.new(0, 5)
+    corner3.Parent = close
+
+    close.MouseButton1Click:Connect(function()
+        gui:Destroy()
+    end)
+
+    -- Retornar UI para criação de botões
+    local content = Instance.new("Frame")
+    content.Size = UDim2.new(1, 0, 1, -40)
+    content.Position = UDim2.new(0, 0, 0, 40)
+    content.BackgroundTransparency = 1
+    content.Parent = frame
+
+    function Visionario:CreateButton(text, callback)
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(0.8, 0, 0, 30)
+        btn.Position = UDim2.new(0.1, 0, #content:GetChildren() * 0.12, 0)
+        btn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+        btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        btn.Font = Enum.Font.Gotham
+        btn.TextSize = 14
+        btn.Text = text
+        btn.Parent = content
+
+        local c = Instance.new("UICorner")
+        c.CornerRadius = UDim.new(0, 5)
+        c.Parent = btn
+
+        btn.MouseButton1Click:Connect(function()
+            if callback then
+                callback()
+            end
+        end)
+    end
+
+    return Visionario
 end
 
--- Criar GUI principal
-local gui = Instance.new("ScreenGui")
-gui.Name = "VisionarioUI"
-gui.ResetOnSpawn = false
-gui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
-
--- Janela principal
-local main = Instance.new("Frame")
-main.Size = UDim2.new(0, 550, 0, 350)
-main.Position = UDim2.new(0.5, -275, 0.4, -175)
-main.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-main.BorderSizePixel = 0
-main.Parent = gui
-
-local corner = Instance.new("UICorner", main)
-corner.CornerRadius = UDim.new(0, 12)
-
--- Título
-local title = Instance.new("TextLabel")
-title.Parent = main
-title.Size = UDim2.new(1, 0, 0, 40)
-title.BackgroundTransparency = 1
-title.Text = "Visionário Hub"
-title.TextColor3 = Color3.fromRGB(255,255,255)
-title.Font = Enum.Font.GothamBold
-title.TextSize = 22
-
--- Botão fechar
-local close = Instance.new("TextButton")
-close.Parent = main
-close.Size = UDim2.new(0, 30, 0, 30)
-close.Position = UDim2.new(1, -40, 0, 5)
-close.Text = "X"
-close.Font = Enum.Font.GothamBold
-close.TextSize = 18
-close.TextColor3 = Color3.new(1,1,1)
-close.BackgroundColor3 = Color3.fromRGB(180,50,50)
-Instance.new("UICorner", close).CornerRadius = UDim.new(0,6)
-close.MouseButton1Click:Connect(function()
-	main.Visible = false
-end)
-
--- Área de abas
-local tabHolder = Instance.new("Frame")
-tabHolder.Parent = main
-tabHolder.Size = UDim2.new(0, 120, 1, -50)
-tabHolder.Position = UDim2.new(0, 10, 0, 50)
-tabHolder.BackgroundTransparency = 1
-
-local list = Instance.new("UIListLayout", tabHolder)
-list.Padding = UDim.new(0, 6)
-list.SortOrder = Enum.SortOrder.LayoutOrder
-
--- Área de conteúdo
-local content = Instance.new("Frame")
-content.Parent = main
-content.Size = UDim2.new(1, -150, 1, -60)
-content.Position = UDim2.new(0, 140, 0, 50)
-content.BackgroundColor3 = Color3.fromRGB(25,25,25)
-content.BorderSizePixel = 0
-Instance.new("UICorner", content).CornerRadius = UDim.new(0, 10)
-
--- Criar abas
-local tabs = {}
-local activeTab = nil
-
-local function createTab(name)
-	local button = Instance.new("TextButton")
-	button.Parent = tabHolder
-	button.Size = UDim2.new(1, 0, 0, 40)
-	button.BackgroundColor3 = Color3.fromRGB(35,35,35)
-	button.TextColor3 = Color3.fromRGB(255,255,255)
-	button.Font = Enum.Font.GothamBold
-	button.TextSize = 16
-	button.Text = name
-	Instance.new("UICorner", button).CornerRadius = UDim.new(0,8)
-
-	local frame = Instance.new("Frame")
-	frame.Parent = content
-	frame.Size = UDim2.new(1, -10, 1, -10)
-	frame.Position = UDim2.new(0, 5, 0, 5)
-	frame.BackgroundTransparency = 1
-	frame.Visible = false
-
-	button.MouseButton1Click:Connect(function()
-		for _, tab in pairs(tabs) do
-			tab.frame.Visible = false
-		end
-		frame.Visible = true
-		activeTab = frame
-	end)
-
-	tabs[#tabs+1] = {button = button, frame = frame}
-	if #tabs == 1 then
-		frame.Visible = true
-	end
-	return frame
-end
-
--- Criar botão
-local function createButton(tab, text, callback)
-	local btn = Instance.new("TextButton")
-	btn.Parent = tab
-	btn.Size = UDim2.new(1, -20, 0, 40)
-	btn.Position = UDim2.new(0, 10, 0, 0)
-	btn.BackgroundColor3 = Color3.fromRGB(60,60,70)
-	btn.Text = text
-	btn.Font = Enum.Font.GothamBold
-	btn.TextSize = 16
-	btn.TextColor3 = Color3.fromRGB(255,255,255)
-	btn.BorderSizePixel = 0
-	Instance.new("UICorner", btn).CornerRadius = UDim.new(0,8)
-	btn.MouseButton1Click:Connect(callback)
-end
-
--- Criar toggle
-local function createToggle(tab, text)
-	local frame = Instance.new("Frame")
-	frame.Parent = tab
-	frame.Size = UDim2.new(1, -20, 0, 35)
-	frame.Position = UDim2.new(0, 10, 0, 0)
-	frame.BackgroundTransparency = 1
-
-	local label = Instance.new("TextLabel")
-	label.Parent = frame
-	label.Text = text
-	label.Font = Enum.Font.Gotham
-	label.TextSize = 16
-	label.TextColor3 = Color3.fromRGB(255,255,255)
-	label.Size = UDim2.new(0.7, 0, 1, 0)
-	label.BackgroundTransparency = 1
-	label.TextXAlignment = Enum.TextXAlignment.Left
-
-	local toggleBtn = Instance.new("TextButton")
-	toggleBtn.Parent = frame
-	toggleBtn.Size = UDim2.new(0.25, 0, 0.8, 0)
-	toggleBtn.Position = UDim2.new(0.75, 0, 0.1, 0)
-	toggleBtn.Text = "OFF"
-	toggleBtn.Font = Enum.Font.GothamBold
-	toggleBtn.TextSize = 14
-	toggleBtn.BackgroundColor3 = Color3.fromRGB(120,120,120)
-	toggleBtn.TextColor3 = Color3.fromRGB(255,255,255)
-	Instance.new("UICorner", toggleBtn).CornerRadius = UDim.new(0,6)
-
-	local enabled = false
-	toggleBtn.MouseButton1Click:Connect(function()
-		enabled = not enabled
-		toggleBtn.Text = enabled and "ON" or "OFF"
-		toggleBtn.BackgroundColor3 = enabled and Color3.fromRGB(50,200,100) or Color3.fromRGB(120,120,120)
-	end)
-end
+return Visionario
